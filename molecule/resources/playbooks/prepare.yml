@@ -1,0 +1,29 @@
+---
+# role: prometheus
+# file: molecule/resources/playbooks/prepare.yml
+
+- name: "Molecule | prepare | prometheus"
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: "PROMETHEUS | Refresh APT package metadata"
+      become: true
+      become_user: root
+      ansible.builtin.apt:
+        update_cache: true
+      when: ansible_facts.pkg_mgr == 'apt'
+
+    - name: "PROMETHEUS | Refresh DNF package metadata"
+      become: true
+      become_user: root
+      ansible.builtin.dnf:
+        update_cache: true
+      when: ansible_facts.pkg_mgr in ['dnf', 'dnf5']
+
+    - name: "PROMETHEUS | Refresh Zypper package metadata"
+      become: true
+      become_user: root
+      community.general.zypper_repository:
+        repo: '*'
+        runrefresh: true
+      when: ansible_facts.pkg_mgr == 'zypper'

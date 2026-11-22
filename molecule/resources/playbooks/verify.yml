@@ -1,0 +1,29 @@
+---
+# role: prometheus
+# file: molecule/resources/playbooks/verify.yml
+
+- name: PROMETHEUS | Verify the service and its scrape job
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: PROMETHEUS | Read the service state
+      ansible.builtin.service_facts:
+
+    - name: PROMETHEUS | Verify the service runs and starts at boot
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['prometheus.service'].state == 'running'
+          - ansible_facts.services['prometheus.service'].status == 'enabled'
+        quiet: true
+
+    - name: PROMETHEUS | Wait for a successful scrape in the time-series database
+      ansible.builtin.uri:
+        url: http://127.0.0.1:9090/api/v1/query
+        method: POST
+        body_format: form-urlencoded
+        body:
+          query: 'up{job="{{ __prometheus_expected_job | default("prometheus") }}"} == 1'
+      register: __prometheus_query
+      until: __prometheus_query.status == 200 and __prometheus_query.json.data.result | length == 1
+      retries: 45
+      delay: 2

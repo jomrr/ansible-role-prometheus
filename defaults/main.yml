@@ -1,0 +1,18 @@
+---
+# role: prometheus
+# file: defaults/main.yml
+
+# Upstream Prometheus release installed on the managed host.
+prometheus_version: 3.13.5
+
+# HTTP endpoint for the Prometheus query API, metrics and web interface.
+prometheus_listen_address: '127.0.0.1:9090'
+
+# Complete native Prometheus configuration.
+prometheus_config:
+  global:
+    scrape_interval: 15s
+  scrape_configs:
+    - job_name: prometheus
+      static_configs:
+        - targets: ['127.0.0.1:9090']

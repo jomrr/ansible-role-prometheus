@@ -1,0 +1,17 @@
+---
+# role: prometheus
+# file: meta/main.yml
+
+galaxy_info:
+  author: Jonas Mauer
+  description: Install the upstream Prometheus server and manage its scrape configuration and systemd service.
+  galaxy_tags:
+    - metrics
+    - monitoring
+    - observability
+    - prometheus
+  issue_tracker_url: https://github.com/jomrr/ansible-role-prometheus/issues
+  license: MIT
+  min_ansible_version: "2.22"
+  namespace: jomrr
+  role_name: prometheus

@@ -1,0 +1,29 @@
+---
+# role: prometheus
+# file: meta/argument_specs.yml
+
+argument_specs:
+  main:
+    short_description: Install and configure a standalone Prometheus server.
+    options:
+      prometheus_version:
+        type: str
+        default: 3.13.5
+        description: Upstream release version in major.minor.patch form.
+      prometheus_listen_address:
+        type: str
+        default: 127.0.0.1:9090
+        description: HTTP listen endpoint in host:port or [IPv6]:port form.
+      prometheus_config:
+        type: dict
+        no_log: true
+        default:
+          global:
+            scrape_interval: 15s
+          scrape_configs:
+            - job_name: prometheus
+              static_configs:
+                - targets:
+                    - 127.0.0.1:9090
+        description: Complete native Prometheus configuration, including scrape jobs and
+          optional alerting or remote storage settings.

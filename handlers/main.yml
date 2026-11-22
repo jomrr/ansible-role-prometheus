@@ -1,0 +1,11 @@
+---
+# role: prometheus
+# file: handlers/main.yml
+
+- name: PROMETHEUS | Restart Prometheus
+  become: true
+  become_user: root
+  ansible.builtin.systemd_service:
+    name: prometheus.service
+    daemon_reload: "{{ __prometheus_unit.changed }}"
+    state: restarted

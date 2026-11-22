@@ -1,0 +1,25 @@
+# Managed by ansible.
+# file: {{ template_destpath }}
+
+[Unit]
+Description=Prometheus monitoring server
+Documentation=https://prometheus.io/docs/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+StateDirectory=prometheus
+StateDirectoryMode=0750
+WorkingDirectory=/var/lib/prometheus
+ExecStart={{ __prometheus_bin_dir }}/prometheus \
+    --config.file=/etc/prometheus/prometheus.yml \
+    --storage.tsdb.path=/var/lib/prometheus \
+    --web.listen-address={{ prometheus_listen_address }}
+Restart=on-failure
+NoNewPrivileges=true
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

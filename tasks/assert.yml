@@ -1,0 +1,19 @@
+---
+# role: prometheus
+# file: tasks/assert.yml
+
+- name: PROMETHEUS | Check the release version and host architecture
+  ansible.builtin.assert:
+    that:
+      - prometheus_version is match('\A[0-9]+\.[0-9]+\.[0-9]+\Z')
+      - ansible_facts.architecture in __prometheus_architectures
+    fail_msg: A numeric major.minor.patch release and an x86_64 or aarch64 host are required.
+    quiet: true
+
+- name: PROMETHEUS | Check the HTTP listener for the systemd command line
+  ansible.builtin.assert:
+    that:
+      - prometheus_listen_address is match('\A(?:[a-zA-Z0-9.-]+|\[[a-fA-F0-9:]+\]):[0-9]{1,5}\Z')
+      - 0 < prometheus_listen_address.rsplit(':', 1)[1] | int <= 65535
+    fail_msg: Specify the HTTP listener as host:port or [IPv6]:port with a port between 1 and 65535.
+    quiet: true

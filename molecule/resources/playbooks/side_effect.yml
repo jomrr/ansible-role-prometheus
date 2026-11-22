@@ -1,0 +1,23 @@
+---
+# role: prometheus
+# file: molecule/resources/playbooks/side_effect.yml
+
+- name: PROMETHEUS | Apply a new scrape job to the running server
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: PROMETHEUS | Replace the scrape configuration
+      ansible.builtin.include_role:
+        name: "{{ lookup('ansible.builtin.env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+      vars:
+        prometheus_config:
+          scrape_configs:
+            - job_name: reconfigured
+              scrape_interval: 2s
+              static_configs:
+                - targets: ['127.0.0.1:9090']
+
+- name: PROMETHEUS | Verify the replacement job collects samples
+  ansible.builtin.import_playbook: verify.yml
+  vars:
+    __prometheus_expected_job: reconfigured

@@ -1,0 +1,10 @@
+---
+# role: prometheus
+# file: vars/main.yml
+
+__prometheus_architectures:
+  x86_64: amd64
+  aarch64: arm64
+__prometheus_release: "prometheus-{{ prometheus_version }}.linux-{{ __prometheus_architectures[ansible_facts.architecture] }}"
+__prometheus_download_url: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}"
+__prometheus_bin_dir: "/usr/local/libexec/prometheus/{{ __prometheus_release }}"
