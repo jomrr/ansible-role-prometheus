@@ -20,3 +20,10 @@ __prometheus_libexec_dir: /usr/local/libexec/prometheus
 __prometheus_programs: [promtool, prometheus]
 __prometheus_promtool: "{{ '/usr/bin/promtool' if prometheus_install == 'package' else __prometheus_libexec_dir ~ '/promtool-' ~ __prometheus_version }}"
 __prometheus_data_dir: "{{ '/var/lib/prometheus' if __prometheus_legacy_wal.stat.exists else __prometheus_package_data_dir }}"
+__prometheus_server_args:
+  - "--config.file={{ __prometheus_config_file }}"
+  - "--storage.tsdb.path={{ __prometheus_data_dir }}"
+  - "--web.listen-address={{ prometheus_listen_address }}"
+  - "{{ '--storage.tsdb.retention.time=' ~ prometheus_retention_time if prometheus_retention_time not in [none, ''] else '' }}"
+  - "{{ '--storage.tsdb.retention.size=' ~ prometheus_retention_size if prometheus_retention_size not in [none, ''] else '' }}"
+  - "{{ '--web.config.file=' ~ __prometheus_web_config_file if prometheus_web_config else '' }}"

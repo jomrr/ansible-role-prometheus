@@ -41,12 +41,10 @@ argument_specs:
       prometheus_web_config:
         type: dict
         default: {}
-        no_log: true
         description: Native Prometheus web configuration, including tls_server_config and
           basic_auth_users. An empty mapping disables the web config file.
       prometheus_config:
         type: dict
-        no_log: true
         default:
           global:
             scrape_interval: 15s

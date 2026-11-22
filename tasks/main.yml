@@ -70,12 +70,7 @@
   ansible.builtin.lineinfile:
     path: "{{ __prometheus_env_file }}"
     regexp: '^ARGS='
-    line: >-
-      ARGS="--config.file={{ __prometheus_config_file }}
-      --storage.tsdb.path={{ __prometheus_data_dir }} --web.listen-address={{ prometheus_listen_address }}
-      {%- if prometheus_retention_time not in [none, ''] %} --storage.tsdb.retention.time={{ prometheus_retention_time }}{% endif %}
-      {%- if prometheus_retention_size not in [none, ''] %} --storage.tsdb.retention.size={{ prometheus_retention_size }}{% endif %}
-      {%- if prometheus_web_config %} --web.config.file={{ __prometheus_web_config_file }}{% endif %}"
+    line: ARGS="{{ __prometheus_server_args | select | join(' ') }}"
     create: true
     owner: root
     group: root

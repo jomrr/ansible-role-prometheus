@@ -41,7 +41,7 @@
             cert_file: /etc/prometheus/test.crt
             key_file: /etc/prometheus/test.key
           basic_auth_users:
-            monitor: '$2b$05$xfjfHzLmd5.boNRTzhtrN.zzJeIf4fGSr3rzTERw845SWswJeivz2'
+            monitor: '$2b$05$6PhAVRmVAJvUjg7acGT.bu9e5vPVbEQTeju/F1m2xCWPg4RrLjh2m'
 
     - name: PROMETHEUS | Require authentication on the trusted HTTPS listener
       ansible.builtin.uri:
@@ -58,7 +58,7 @@
         url: https://127.0.0.1:9090/api/v1/status/runtimeinfo
         ca_path: /etc/prometheus/test.crt
         url_username: monitor
-        url_password: molecule
+        url_password: fixture-web-auth-92e7
         force_basic_auth: true
       register: __prometheus_runtime
       failed_when: __prometheus_runtime.json.data.storageRetention not in ['1GiB', '1GB']
