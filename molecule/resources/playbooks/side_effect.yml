@@ -26,6 +26,49 @@
     __prometheus_expected_version: '3.13.5'
     __prometheus_expected_units: [/etc/systemd/system/prometheus.service]
 
+- name: PROMETHEUS | Exercise upstream release channels
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: PROMETHEUS | Read the published releases for comparison with the running server
+      ansible.builtin.uri:
+        url: https://prometheus.io/download.json
+      register: __prometheus_published
+
+    - name: PROMETHEUS | Verify the default binary installation follows stable
+      ansible.builtin.include_tasks: ../tasks/verify_channel.yml
+      vars:
+        __prometheus_test_channel: stable
+
+    - name: PROMETHEUS | Apply and verify the other release channels
+      ansible.builtin.include_tasks: ../tasks/verify_channel.yml
+      vars:
+        prometheus_version: "{{ __prometheus_test_channel }}"
+      loop: [latest, lts]
+      loop_control:
+        loop_var: __prometheus_test_channel
+
+    - name: PROMETHEUS | Record the running LTS service invocation
+      ansible.builtin.systemd_service:
+        name: prometheus.service
+        state: started
+      check_mode: true
+      register: __prometheus_lts_invocation
+
+    - name: PROMETHEUS | Reapply the LTS channel
+      ansible.builtin.include_tasks: ../tasks/verify_channel.yml
+      vars:
+        __prometheus_test_channel: lts
+        prometheus_version: "{{ __prometheus_test_channel }}"
+
+    - name: PROMETHEUS | Verify the same LTS release keeps the running process
+      ansible.builtin.systemd_service:
+        name: prometheus.service
+        state: started
+      check_mode: true
+      register: __prometheus_reapplied
+      failed_when: __prometheus_reapplied.status.InvocationID != __prometheus_lts_invocation.status.InvocationID
+
 - name: PROMETHEUS | Switch the running binary back to the distribution package
   hosts: all
   gather_facts: true

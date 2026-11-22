@@ -6,8 +6,9 @@
 # Choices: binary, package
 prometheus_install: package
 
-# Fixed upstream release used only for binary installations.
-prometheus_version: 3.13.5
+# Upstream release used for binary installations.
+# Choices: stable, latest, lts, or a fixed major.minor.patch version
+prometheus_version: stable
 
 # HTTP endpoint for the Prometheus query API, metrics and web interface.
 prometheus_listen_address: '127.0.0.1:9090'

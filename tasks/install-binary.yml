@@ -9,6 +9,21 @@
     name: [ca-certificates, gzip, tar]
     state: present
 
+- name: PROMETHEUS | Resolve the selected release channel
+  when: not __prometheus_is_pinned
+  block:
+    - name: PROMETHEUS | Read the upstream download catalog
+      ansible.builtin.uri:
+        url: https://prometheus.io/download.json
+      register: __prometheus_catalog
+      check_mode: false
+
+    - name: PROMETHEUS | Require a matching release before installing
+      ansible.builtin.assert:
+        that: __prometheus_channel_versions | length > 0
+        fail_msg: "The Prometheus download catalog contains no release for channel '{{ prometheus_version }}'."
+        quiet: true
+
 - name: PROMETHEUS | Create the service group
   become: true
   become_user: root
@@ -60,7 +75,7 @@
       - "{{ __prometheus_release }}/promtool"
     extra_opts:
       - '--transform=s|^.*/||'
-      - '--transform=s|$|-{{ prometheus_version }}|'
+      - '--transform=s|$|-{{ __prometheus_version }}|'
     owner: root
     group: root
     mode: '0755'

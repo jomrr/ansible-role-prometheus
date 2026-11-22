@@ -21,6 +21,8 @@ Run Prometheus as a standalone time-series database. By default it listens on
   AlmaLinux Extras.
 - Binary installs require x86_64 or aarch64 and HTTPS access to upstream release
   assets on GitHub.
+- Binary hosts following a release channel also need HTTPS access to
+  prometheus.io.
 
 ## Dependencies
 
@@ -40,7 +42,7 @@ collections:
 
 Type: `str`. Required: `false`.
 
-Install the distribution package or a pinned upstream binary release.
+Install the distribution package or an upstream binary release.
 
 Default:
 
@@ -52,13 +54,13 @@ prometheus_install: package
 
 Type: `str`. Required: `false`.
 
-Fixed upstream release in major.minor.patch form. Used only when
-prometheus_install is binary.
+Binary release to install. Use a major.minor.patch version or follow the stable,
+latest or lts field in the Prometheus download catalog.
 
 Default:
 
 ```yaml
-prometheus_version: 3.13.5
+prometheus_version: stable
 ```
 
 ### `prometheus_listen_address`
@@ -132,13 +134,19 @@ installation mode restart the server.
   AlmaLinux, Debian, Fedora and Ubuntu use `/etc/default/prometheus` and
   `/var/lib/prometheus/metrics2`.
 - Package mode installs the available distribution version and leaves updates to
-  the package manager. To keep an existing upstream installation pinned when
-  adopting this default, set `prometheus_install: binary`.
+  the package manager. To keep an upstream installation pinned, set
+  `prometheus_install: binary` and specify its numeric `prometheus_version`.
 - Binary mode stores `prometheus-<version>` and `promtool-<version>` directly in
   `/usr/local/libexec/prometheus/`. The commands in `/usr/local/bin/` point to
-  the configured release. Changing the pin switches the links and restarts the
+  the selected release. A version change switches the links and restarts the
   service. Switching to package mode removes these links so the distribution
   commands in `/usr/bin/` take effect.
+- Binary installations follow `stable` by default. With `stable`, `latest` or
+  `lts`, each run reads the official download catalog. `stable` selects the
+  highest stable version, `latest` the release marked latest by Prometheus, and
+  `lts` the highest version marked for long-term support. An LTS series change
+  takes effect on the next run. If the catalog lookup fails or the channel has
+  no release, the running service keeps its version.
 - Both modes reuse a database created by earlier role versions directly in
   /var/lib/prometheus. Before selecting an older server version, check
   configuration and storage compatibility and back up the database.
@@ -186,6 +194,19 @@ Install a specific upstream release independently of the distribution package ve
       prometheus_version: '3.13.5'
 ```
 
+### Follow the upstream LTS channel
+
+Install the newest binary release marked for long-term support.
+
+```yaml
+- name: Run the current Prometheus LTS release
+  hosts: monitoring
+  roles:
+    - role: jomrr.prometheus
+      prometheus_install: binary
+      prometheus_version: lts
+```
+
 ### Scrape an application
 
 Collect metrics from an application every 30 seconds.
@@ -208,6 +229,7 @@ Collect metrics from an application every 30 seconds.
 ## References
 
 - [Prometheus releases and checksums](https://prometheus.io/download/)
+- [Prometheus release catalog](https://prometheus.io/download.json)
 - [Prometheus configuration](https://prometheus.io/docs/prometheus/latest/configuration/configuration/)
 
 ## Author

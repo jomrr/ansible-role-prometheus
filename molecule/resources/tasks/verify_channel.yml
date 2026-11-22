@@ -1,0 +1,21 @@
+---
+# role: prometheus
+# file: molecule/resources/tasks/verify_channel.yml
+
+- name: PROMETHEUS | Apply the binary channel
+  ansible.builtin.include_role:
+    name: "{{ lookup('ansible.builtin.env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+  vars:
+    prometheus_install: binary
+
+- name: PROMETHEUS | Verify the running version against the selected catalog field
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9090/api/v1/status/buildinfo
+  register: __prometheus_build
+  until: >-
+    __prometheus_build.status == 200 and
+    'v' ~ __prometheus_build.json.data.version ==
+    (__prometheus_published.json.prometheus | selectattr(__prometheus_test_channel, 'equalto', true)
+     | map(attribute='version') | list | community.general.version_sort | last)
+  retries: 20
+  delay: 1

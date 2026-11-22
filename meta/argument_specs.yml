@@ -12,12 +12,18 @@ argument_specs:
           - binary
           - package
         default: package
-        description: Install the distribution package or a pinned upstream binary release.
+        description: Install the distribution package or an upstream binary release.
       prometheus_version:
         type: str
-        default: 3.13.5
-        description: Fixed upstream release in major.minor.patch form. Used only when prometheus_install
-          is binary.
+        choices:
+          - stable
+          - latest
+          - lts
+          - '{{ prometheus_version if prometheus_install == ''package'' or __prometheus_is_pinned
+            else omit }}'
+        default: stable
+        description: Binary release to install. Use a major.minor.patch version or follow
+          the stable, latest or lts field in the Prometheus download catalog.
       prometheus_listen_address:
         type: str
         default: 127.0.0.1:9090

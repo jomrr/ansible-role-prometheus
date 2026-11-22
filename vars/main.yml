@@ -6,9 +6,16 @@ __prometheus_config_file: /etc/prometheus/prometheus.yml
 __prometheus_architectures:
   x86_64: amd64
   aarch64: arm64
-__prometheus_release: "prometheus-{{ prometheus_version }}.linux-{{ __prometheus_architectures[ansible_facts.architecture] }}"
-__prometheus_download_url: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}"
+__prometheus_version_pattern: '\A[0-9]+[.][0-9]+[.][0-9]+\Z'
+__prometheus_is_pinned: "{{ prometheus_version is match(__prometheus_version_pattern) }}"
+__prometheus_channel_versions: >-
+  {{ __prometheus_catalog.json.prometheus | selectattr(prometheus_version, 'equalto', true)
+     | map(attribute='version') | map('regex_replace', '^v', '') | select('match', __prometheus_version_pattern)
+     | list | community.general.version_sort(reverse=true) }}
+__prometheus_version: "{{ prometheus_version if __prometheus_is_pinned else __prometheus_channel_versions | first }}"
+__prometheus_release: "prometheus-{{ __prometheus_version }}.linux-{{ __prometheus_architectures[ansible_facts.architecture] }}"
+__prometheus_download_url: "https://github.com/prometheus/prometheus/releases/download/v{{ __prometheus_version }}"
 __prometheus_libexec_dir: /usr/local/libexec/prometheus
 __prometheus_programs: [promtool, prometheus]
-__prometheus_promtool: "{{ '/usr/bin/promtool' if prometheus_install == 'package' else __prometheus_libexec_dir ~ '/promtool-' ~ prometheus_version }}"
+__prometheus_promtool: "{{ '/usr/bin/promtool' if prometheus_install == 'package' else __prometheus_libexec_dir ~ '/promtool-' ~ __prometheus_version }}"
 __prometheus_data_dir: "{{ '/var/lib/prometheus' if __prometheus_legacy_wal.stat.exists else __prometheus_package_data_dir }}"
