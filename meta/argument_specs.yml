@@ -28,6 +28,22 @@ argument_specs:
         type: str
         default: 127.0.0.1:9090
         description: HTTP listen endpoint in host:port or [IPv6]:port form.
+      prometheus_retention_time:
+        type: str
+        default: ''
+        description: Maximum sample age, for example 30d or 1w12h. An empty string omits
+          the time flag.
+      prometheus_retention_size:
+        type: str
+        default: ''
+        description: Maximum local block size, for example 50GB. An empty string omits the
+          size flag. A positive size alone disables time-based retention.
+      prometheus_web_config:
+        type: dict
+        default: {}
+        no_log: true
+        description: Native Prometheus web configuration, including tls_server_config and
+          basic_auth_users. An empty mapping disables the web config file.
       prometheus_config:
         type: dict
         no_log: true

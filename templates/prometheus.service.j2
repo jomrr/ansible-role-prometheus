@@ -14,7 +14,6 @@ EnvironmentFile={{ __prometheus_env_file }}
 WorkingDirectory={{ __prometheus_data_dir }}
 ExecStart=/usr/local/bin/prometheus $ARGS
 Restart=on-failure
-NoNewPrivileges=true
 UMask=0027
 
 [Install]

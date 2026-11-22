@@ -75,6 +75,45 @@ Default:
 prometheus_listen_address: 127.0.0.1:9090
 ```
 
+### `prometheus_retention_time`
+
+Type: `str`. Required: `false`.
+
+Maximum sample age, for example 30d or 1w12h. An empty string omits the time
+flag.
+
+Default:
+
+```yaml
+prometheus_retention_time: ''
+```
+
+### `prometheus_retention_size`
+
+Type: `str`. Required: `false`.
+
+Maximum local block size, for example 50GB. An empty string omits the size flag.
+A positive size alone disables time-based retention.
+
+Default:
+
+```yaml
+prometheus_retention_size: ''
+```
+
+### `prometheus_web_config`
+
+Type: `dict`. Required: `false`.
+
+Native Prometheus web configuration, including tls_server_config and
+basic_auth_users. An empty mapping disables the web config file.
+
+Default:
+
+```yaml
+prometheus_web_config: {}
+```
+
 ### `prometheus_config`
 
 Type: `dict`. Required: `false`.
@@ -98,9 +137,11 @@ prometheus_config:
 ## Managed Files
 
 - `/etc/prometheus/prometheus.yml`
+- `/etc/prometheus/web-config.ansible.yml`
 - `/etc/default/prometheus`
 - `/etc/sysconfig/prometheus`
 - `/etc/systemd/system/prometheus.service`
+- `/etc/systemd/system/prometheus.service.d/10-ansible.conf`
 - `/usr/local/bin/prometheus`
 - `/usr/local/bin/promtool`
 - `/usr/local/libexec/prometheus/`
@@ -118,8 +159,9 @@ Package installations use the distribution systemd unit and service account.
 Binary installations verify the release archive against its SHA-256 manifest and
 supply their own unit and service account. Both modes validate the same
 configuration with the selected promtool, use the distribution's environment
-file and data path, and enable the service at boot. Changes to configuration or
-installation mode restart the server.
+file and data path, and enable the service at boot. Both units run with a
+read-only filesystem and write TSDB data only in the active data directory.
+Changes to configuration, retention or installation mode restart the server.
 
 ## Security Notes
 
@@ -127,6 +169,10 @@ installation mode restart the server.
   Ansible Vault for scrape credentials.
 - The HTTP API has no authentication by default. Keep the loopback listener or
   restrict access before exposing it.
+- Supply bcrypt password hashes in `prometheus_web_config.basic_auth_users`. Use
+  absolute paths for TLS files readable by the service account. The role
+  validates the web configuration with `promtool check web-config` before
+  installation. An empty mapping restores the plain HTTP listener.
 
 ## Operational Notes
 
@@ -154,6 +200,10 @@ installation mode restart the server.
   and bearer tokens. Provision them with read access for the service account.
 - Changing the HTTP listener also requires updating any self-scrape target that
   uses the old address.
+- With both retention variables empty, Prometheus defaults to 15 days. A
+  positive size alone applies no age limit. When both are set, blocks expire at
+  the first limit reached. Versions supporting native retention settings give
+  them precedence over the CLI flags.
 
 ## Supported Platforms
 
@@ -207,6 +257,36 @@ Install the newest binary release marked for long-term support.
       prometheus_version: lts
 ```
 
+### Serve HTTPS with basic authentication and size-based retention
+
+Provision the TLS files and Vault credentials before applying this example.
+
+```yaml
+- name: Secure the Prometheus listener
+  hosts: monitoring
+  roles:
+    - role: jomrr.prometheus
+      prometheus_retention_size: 50GB
+      prometheus_web_config:
+        tls_server_config:
+          cert_file: /etc/prometheus/tls/server.crt
+          key_file: /etc/prometheus/tls/server.key
+        basic_auth_users:
+          monitor: "{{ vault_monitor_bcrypt }}"
+      prometheus_config:
+        scrape_configs:
+          - job_name: prometheus
+            scheme: https
+            tls_config:
+              ca_file: /etc/prometheus/tls/ca.crt
+              server_name: prometheus.example.org
+            basic_auth:
+              username: monitor
+              password: "{{ vault_monitor_password }}"
+            static_configs:
+              - targets: ['127.0.0.1:9090']
+```
+
 ### Scrape an application
 
 Collect metrics from an application every 30 seconds.
@@ -231,6 +311,8 @@ Collect metrics from an application every 30 seconds.
 - [Prometheus releases and checksums](https://prometheus.io/download/)
 - [Prometheus release catalog](https://prometheus.io/download.json)
 - [Prometheus configuration](https://prometheus.io/docs/prometheus/latest/configuration/configuration/)
+- [Prometheus storage retention](https://prometheus.io/docs/prometheus/latest/storage/)
+- [Prometheus HTTPS and authentication](https://prometheus.io/docs/prometheus/latest/configuration/https/)
 
 ## Author
 

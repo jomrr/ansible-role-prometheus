@@ -2,6 +2,9 @@
 # role: prometheus
 # file: molecule/resources/playbooks/side_effect.yml
 
+- name: PROMETHEUS | Exercise the secured package listener and size-only retention
+  ansible.builtin.import_playbook: verify_web.yml
+
 - name: PROMETHEUS | Switch the running package service to an upstream binary
   hosts: all
   gather_facts: true
@@ -12,6 +15,7 @@
       vars:
         prometheus_install: binary
         prometheus_version: '3.13.5'
+        prometheus_retention_time: 31d
         prometheus_config:
           scrape_configs:
             - job_name: reconfigured
@@ -24,6 +28,7 @@
   vars:
     __prometheus_expected_job: reconfigured
     __prometheus_expected_version: '3.13.5'
+    __prometheus_expected_retention: 31d
     __prometheus_expected_units: [/etc/systemd/system/prometheus.service]
 
 - name: PROMETHEUS | Exercise upstream release channels

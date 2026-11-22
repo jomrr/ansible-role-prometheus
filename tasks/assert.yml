@@ -17,3 +17,13 @@
       - 0 < prometheus_listen_address.rsplit(':', 1)[1] | int <= 65535
     fail_msg: Specify the HTTP listener as host:port or [IPv6]:port with a port between 1 and 65535.
     quiet: true
+
+- name: PROMETHEUS | Check retention values before adding them to the command line
+  ansible.builtin.assert:
+    that:
+      - >-
+        prometheus_retention_time in [none, ''] or
+        prometheus_retention_time is match('\A(?:0|(?=[0-9])(?:[0-9]+y)?(?:[0-9]+w)?(?:[0-9]+d)?(?:[0-9]+h)?(?:[0-9]+m)?(?:[0-9]+s)?(?:[0-9]+ms)?)\Z')
+      - prometheus_retention_size in [none, ''] or prometheus_retention_size is match('\A(?:0|[0-9]+(?:[.][0-9]+)?(?:[KMGTPE]i?)?B)\Z')
+    fail_msg: Supply a Prometheus duration such as 30d and a block size such as 50GB, or leave either value empty.
+    quiet: true

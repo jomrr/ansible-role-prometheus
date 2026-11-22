@@ -49,6 +49,21 @@
   no_log: true
   notify: PROMETHEUS | Restart Prometheus
 
+- name: PROMETHEUS | Validate and install the web configuration
+  become: true
+  become_user: root
+  ansible.builtin.template:
+    src: web-config.yml.j2
+    dest: "{{ __prometheus_web_config_file }}"
+    owner: root
+    group: prometheus
+    mode: '0640'
+    validate: "{{ __prometheus_promtool }} check web-config %s"
+  diff: false
+  no_log: true
+  when: prometheus_web_config | length > 0
+  notify: PROMETHEUS | Restart Prometheus
+
 - name: PROMETHEUS | Set the server arguments in the distribution environment file
   become: true
   become_user: root
@@ -57,7 +72,10 @@
     regexp: '^ARGS='
     line: >-
       ARGS="--config.file={{ __prometheus_config_file }}
-      --storage.tsdb.path={{ __prometheus_data_dir }} --web.listen-address={{ prometheus_listen_address }}"
+      --storage.tsdb.path={{ __prometheus_data_dir }} --web.listen-address={{ prometheus_listen_address }}
+      {%- if prometheus_retention_time not in [none, ''] %} --storage.tsdb.retention.time={{ prometheus_retention_time }}{% endif %}
+      {%- if prometheus_retention_size not in [none, ''] %} --storage.tsdb.retention.size={{ prometheus_retention_size }}{% endif %}
+      {%- if prometheus_web_config %} --web.config.file={{ __prometheus_web_config_file }}{% endif %}"
     create: true
     owner: root
     group: root
@@ -67,6 +85,27 @@
 
 - name: PROMETHEUS | Activate the selected installation
   ansible.builtin.include_tasks: "{{ prometheus_install }}-unit.yml"
+
+- name: PROMETHEUS | Create the systemd drop-in directory
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: /etc/systemd/system/prometheus.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: PROMETHEUS | Install the systemd sandbox
+  become: true
+  become_user: root
+  ansible.builtin.template:
+    src: sandbox.conf.j2
+    dest: /etc/systemd/system/prometheus.service.d/10-ansible.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: PROMETHEUS | Restart Prometheus
 
 - name: PROMETHEUS | Apply service changes
   ansible.builtin.meta: flush_handlers
@@ -78,3 +117,11 @@
     name: prometheus.service
     enabled: true
     state: started
+
+- name: PROMETHEUS | Remove the unused role-managed web configuration
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "{{ __prometheus_web_config_file }}"
+    state: absent
+  when: prometheus_web_config | length == 0

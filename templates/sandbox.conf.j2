@@ -1,0 +1,11 @@
+# Managed by ansible.
+# file: {{ template_destpath }}
+[Service]
+ProtectSystem=strict
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+InaccessiblePaths=/tmp /var/tmp -/dev/shm
+ReadWritePaths=
+ReadWritePaths={{ __prometheus_data_dir }}
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

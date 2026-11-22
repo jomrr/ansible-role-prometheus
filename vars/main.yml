@@ -3,6 +3,7 @@
 # file: vars/main.yml
 
 __prometheus_config_file: /etc/prometheus/prometheus.yml
+__prometheus_web_config_file: /etc/prometheus/web-config.ansible.yml
 __prometheus_architectures:
   x86_64: amd64
   aarch64: arm64

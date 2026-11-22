@@ -18,6 +18,9 @@
         that:
           - __prometheus_service.status.ActiveState == 'active'
           - __prometheus_service.status.UnitFileState == 'enabled'
+          - __prometheus_service.status.ProtectSystem == 'strict'
+          - __prometheus_service.status.NoNewPrivileges == 'yes'
+          - __prometheus_service.status.PrivateDevices == 'yes'
           - >-
             __prometheus_service.status.FragmentPath in
             __prometheus_expected_units | default(['/usr/lib/systemd/system/prometheus.service', '/lib/systemd/system/prometheus.service'])
@@ -47,3 +50,41 @@
       until: __prometheus_query.status == 200 and __prometheus_query.json.data.result | length == 1
       retries: 45
       delay: 2
+
+    - name: PROMETHEUS | Verify the sandbox write path matches the running database
+      ansible.builtin.uri:
+        url: http://127.0.0.1:9090/api/v1/status/flags
+      register: __prometheus_flags
+      failed_when: __prometheus_service.status.ReadWritePaths != __prometheus_flags.json.data['storage.tsdb.path']
+
+    - name: PROMETHEUS | Read the running service's mount table
+      become: true
+      become_user: root
+      ansible.builtin.mount_facts:
+        sources: ["/proc/{{ __prometheus_service.status.MainPID }}/mounts"]
+      register: __prometheus_mounts
+
+    - name: PROMETHEUS | Check mount permissions inside the running service
+      ansible.builtin.assert:
+        that: item.mode in __prometheus_mounts.ansible_facts.mount_points[item.path].options.split(',')
+        quiet: true
+      loop:
+        - {path: "{{ __prometheus_flags.json.data['storage.tsdb.path'] }}", mode: rw}
+        - {path: /, mode: ro}
+        - {path: /tmp, mode: ro}
+        - {path: /var/tmp, mode: ro}
+        - {path: /dev/shm, mode: ro}
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: PROMETHEUS | Verify effective retention
+      ansible.builtin.uri:
+        url: http://127.0.0.1:9090/api/v1/status/runtimeinfo
+      register: __prometheus_runtime
+      failed_when: __prometheus_runtime.json.data.storageRetention != __prometheus_expected_retention | default('15d')
+
+    - name: PROMETHEUS | Verify the disabled web configuration has been removed
+      ansible.builtin.stat:
+        path: /etc/prometheus/web-config.ansible.yml
+      register: __prometheus_web_file
+      failed_when: __prometheus_web_file.stat.exists

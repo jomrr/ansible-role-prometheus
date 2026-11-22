@@ -13,6 +13,15 @@ prometheus_version: stable
 # HTTP endpoint for the Prometheus query API, metrics and web interface.
 prometheus_listen_address: '127.0.0.1:9090'
 
+# Maximum age of local TSDB samples, such as 30d.
+prometheus_retention_time: ''
+
+# Maximum size of local TSDB blocks, such as 50GB.
+prometheus_retention_size: ''
+
+# Native web configuration for TLS and basic authentication.
+prometheus_web_config: {}
+
 # Complete native Prometheus configuration.
 prometheus_config:
   global:
