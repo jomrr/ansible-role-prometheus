@@ -51,3 +51,7 @@ platforms:
     pre_build_image: true
     override_command: false
     systemd: "true"
+    capabilities:
+      - "SYS_ADMIN"
+    security_opts:
+      - "label=disable"

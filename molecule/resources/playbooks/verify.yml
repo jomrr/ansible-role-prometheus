@@ -7,14 +7,34 @@
   gather_facts: false
   tasks:
     - name: PROMETHEUS | Read the service state
-      ansible.builtin.service_facts:
+      ansible.builtin.systemd_service:
+        name: prometheus.service
+        state: started
+      check_mode: true
+      register: __prometheus_service
 
     - name: PROMETHEUS | Verify the service runs and starts at boot
       ansible.builtin.assert:
         that:
-          - ansible_facts.services['prometheus.service'].state == 'running'
-          - ansible_facts.services['prometheus.service'].status == 'enabled'
+          - __prometheus_service.status.ActiveState == 'active'
+          - __prometheus_service.status.UnitFileState == 'enabled'
+          - >-
+            __prometheus_service.status.FragmentPath in
+            __prometheus_expected_units | default(['/usr/lib/systemd/system/prometheus.service', '/lib/systemd/system/prometheus.service'])
         quiet: true
+
+    - name: PROMETHEUS | Verify command paths for the active installation
+      ansible.builtin.stat:
+        path: "/usr/local/bin/{{ __prometheus_program }}"
+        get_checksum: false
+      loop: [prometheus, promtool]
+      loop_control:
+        loop_var: __prometheus_program
+        label: "{{ __prometheus_program }}"
+      register: __prometheus_link
+      failed_when: >-
+        __prometheus_link.stat.lnk_source | default('') != '/usr/local/libexec/prometheus/' ~ __prometheus_program ~ '-' ~ __prometheus_expected_version
+        if __prometheus_expected_version is defined else __prometheus_link.stat.exists
 
     - name: PROMETHEUS | Wait for a successful scrape in the time-series database
       ansible.builtin.uri:

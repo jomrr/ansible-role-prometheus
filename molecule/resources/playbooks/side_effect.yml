@@ -2,14 +2,16 @@
 # role: prometheus
 # file: molecule/resources/playbooks/side_effect.yml
 
-- name: PROMETHEUS | Apply a new scrape job to the running server
+- name: PROMETHEUS | Switch the running package service to an upstream binary
   hosts: all
   gather_facts: true
   tasks:
-    - name: PROMETHEUS | Replace the scrape configuration
+    - name: PROMETHEUS | Install the pinned binary and replace the scrape configuration
       ansible.builtin.include_role:
         name: "{{ lookup('ansible.builtin.env', 'MOLECULE_PROJECT_DIRECTORY') }}"
       vars:
+        prometheus_install: binary
+        prometheus_version: '3.13.5'
         prometheus_config:
           scrape_configs:
             - job_name: reconfigured
@@ -21,3 +23,33 @@
   ansible.builtin.import_playbook: verify.yml
   vars:
     __prometheus_expected_job: reconfigured
+    __prometheus_expected_version: '3.13.5'
+    __prometheus_expected_units: [/etc/systemd/system/prometheus.service]
+
+- name: PROMETHEUS | Switch the running binary back to the distribution package
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: PROMETHEUS | Restore the package service and default scrape job
+      ansible.builtin.include_role:
+        name: "{{ lookup('ansible.builtin.env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+      vars:
+        prometheus_install: package
+        prometheus_version: ignored-by-package
+
+- name: PROMETHEUS | Verify the restored package service
+  ansible.builtin.import_playbook: verify.yml
+
+- name: PROMETHEUS | Verify samples survive a change of installation mode
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: PROMETHEUS | Query historical samples from the binary service
+      ansible.builtin.uri:
+        url: http://127.0.0.1:9090/api/v1/query
+        method: POST
+        body_format: form-urlencoded
+        body:
+          query: 'max_over_time(up{job="reconfigured"}[1h]) == 1'
+      register: __prometheus_history
+      failed_when: __prometheus_history.status != 200 or __prometheus_history.json.data.result | length != 1

@@ -1,0 +1,56 @@
+---
+# role: prometheus
+# file: tasks/package-unit.yml
+
+- name: PROMETHEUS | Locate the role-managed binary service unit
+  ansible.builtin.find:
+    paths: /etc/systemd/system
+    patterns: prometheus.service
+    read_whole_file: true
+    contains: |-
+      (?ms)\A# Managed by ansible\.
+      # file: /etc/systemd/system/prometheus\.service
+      .*^ExecStart=/usr/local/(bin/prometheus |libexec/prometheus/prometheus-)
+  register: __prometheus_binary_unit
+
+- name: PROMETHEUS | Retire the binary service unit
+  when: __prometheus_binary_unit.matched > 0
+  block:
+    - name: PROMETHEUS | Disable the binary unit to remove its boot link
+      become: true
+      become_user: root
+      ansible.builtin.systemd_service:
+        name: prometheus.service
+        enabled: false
+
+    - name: PROMETHEUS | Remove the binary unit to activate the package service
+      become: true
+      become_user: root
+      ansible.builtin.file:
+        path: /etc/systemd/system/prometheus.service
+        state: absent
+      notify: PROMETHEUS | Restart Prometheus
+
+- name: PROMETHEUS | Identify local links to upstream binaries
+  ansible.builtin.stat:
+    path: "/usr/local/bin/{{ __prometheus_program }}"
+    get_checksum: false
+  loop: "{{ __prometheus_programs }}"
+  loop_control:
+    loop_var: __prometheus_program
+    label: "{{ __prometheus_program }}"
+  register: __prometheus_local_commands
+
+- name: PROMETHEUS | Remove links to role-managed releases
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "/usr/local/bin/{{ __prometheus_link.__prometheus_program }}"
+    state: absent
+  loop: "{{ __prometheus_local_commands.results }}"
+  loop_control:
+    loop_var: __prometheus_link
+    label: "{{ __prometheus_link.__prometheus_program }}"
+  when: >-
+    __prometheus_link.stat.lnk_target | default('') is match(
+      __prometheus_libexec_dir ~ '/' ~ __prometheus_link.__prometheus_program ~ '-[0-9]+[.][0-9]+[.][0-9]+\Z')

@@ -1,0 +1,9 @@
+---
+# role: prometheus
+# file: vars/Suse.yml
+
+__prometheus_package: golang-github-prometheus-prometheus
+__prometheus_env_file: /etc/sysconfig/prometheus
+__prometheus_package_data_dir: /var/lib/prometheus/metrics
+__prometheus_user_home: /
+__prometheus_user_shell: /sbin/nologin

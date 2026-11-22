@@ -5,74 +5,32 @@
 - name: PROMETHEUS | Validate installation settings
   ansible.builtin.import_tasks: assert.yml
 
-- name: PROMETHEUS | Install the release archive prerequisites
+- name: PROMETHEUS | Load the distribution package name and paths
+  ansible.builtin.include_vars: "{{ lookup('ansible.builtin.first_found', __prometheus_platform_files) }}"
+  vars:
+    __prometheus_platform_files:
+      files:
+        - "{{ ansible_facts.os_family }}.yml"
+      paths:
+        - "{{ role_path }}/vars"
+
+- name: PROMETHEUS | Locate the database from earlier binary installations
   become: true
   become_user: root
-  ansible.builtin.package:
-    name: [ca-certificates, gzip, tar]
-    state: present
+  ansible.builtin.stat:
+    path: /var/lib/prometheus/wal
+  register: __prometheus_legacy_wal
 
-- name: PROMETHEUS | Create the service group
-  become: true
-  become_user: root
-  ansible.builtin.group:
-    name: prometheus
-    system: true
+- name: PROMETHEUS | Install the selected server
+  ansible.builtin.include_tasks: "install-{{ prometheus_install }}.yml"
 
-- name: PROMETHEUS | Create the service account
-  become: true
-  become_user: root
-  ansible.builtin.user:
-    name: prometheus
-    group: prometheus
-    home: /var/lib/prometheus
-    create_home: false
-    shell: /bin/false
-    system: true
-
-- name: PROMETHEUS | Create the release directory
+- name: PROMETHEUS | Set permissions on the active database directory
   become: true
   become_user: root
   ansible.builtin.file:
-    path: /usr/local/libexec/prometheus
+    path: "{{ __prometheus_data_dir }}"
     state: directory
-    owner: root
-    group: root
-    mode: '0755'
-
-- name: PROMETHEUS | Download and verify the release archive
-  become: true
-  become_user: root
-  ansible.builtin.get_url:
-    url: "{{ __prometheus_download_url }}/{{ __prometheus_release }}.tar.gz"
-    checksum: "sha256:{{ __prometheus_download_url }}/sha256sums.txt"
-    dest: "/var/cache/{{ __prometheus_release }}.tar.gz"
-    owner: root
-    group: root
-    mode: '0644'
-
-- name: PROMETHEUS | Install the server and matching validator
-  become: true
-  become_user: root
-  ansible.builtin.unarchive:
-    src: "/var/cache/{{ __prometheus_release }}.tar.gz"
-    remote_src: true
-    dest: /usr/local/libexec/prometheus
-    include:
-      - "{{ __prometheus_release }}/prometheus"
-      - "{{ __prometheus_release }}/promtool"
-    owner: root
-    group: root
-    mode: '0755'
-  notify: PROMETHEUS | Restart Prometheus
-
-- name: PROMETHEUS | Create the configuration directory
-  become: true
-  become_user: root
-  ansible.builtin.file:
-    path: /etc/prometheus
-    state: directory
-    owner: root
+    owner: prometheus
     group: prometheus
     mode: '0750'
 
@@ -81,27 +39,34 @@
   become_user: root
   ansible.builtin.template:
     src: prometheus.yml.j2
-    dest: /etc/prometheus/prometheus.yml
+    dest: "{{ __prometheus_config_file }}"
     owner: root
     group: prometheus
     mode: '0640'
-    validate: "{{ __prometheus_bin_dir }}/promtool check config %s"
+    validate: "{{ __prometheus_promtool }} check config %s"
     backup: true
   diff: false
   no_log: true
   notify: PROMETHEUS | Restart Prometheus
 
-- name: PROMETHEUS | Install the systemd unit
+- name: PROMETHEUS | Set the server arguments in the distribution environment file
   become: true
   become_user: root
-  ansible.builtin.template:
-    src: prometheus.service.j2
-    dest: /etc/systemd/system/prometheus.service
+  ansible.builtin.lineinfile:
+    path: "{{ __prometheus_env_file }}"
+    regexp: '^ARGS='
+    line: >-
+      ARGS="--config.file={{ __prometheus_config_file }}
+      --storage.tsdb.path={{ __prometheus_data_dir }} --web.listen-address={{ prometheus_listen_address }}"
+    create: true
     owner: root
     group: root
-    mode: '0644'
-  register: __prometheus_unit
+    mode: '0600'
+  diff: false
   notify: PROMETHEUS | Restart Prometheus
+
+- name: PROMETHEUS | Activate the selected installation
+  ansible.builtin.include_tasks: "{{ prometheus_install }}-unit.yml"
 
 - name: PROMETHEUS | Apply service changes
   ansible.builtin.meta: flush_handlers

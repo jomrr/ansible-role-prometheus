@@ -2,7 +2,11 @@
 # role: prometheus
 # file: defaults/main.yml
 
-# Upstream Prometheus release installed on the managed host.
+# Installation source for the Prometheus server.
+# Choices: binary, package
+prometheus_install: package
+
+# Fixed upstream release used only for binary installations.
 prometheus_version: 3.13.5
 
 # HTTP endpoint for the Prometheus query API, metrics and web interface.

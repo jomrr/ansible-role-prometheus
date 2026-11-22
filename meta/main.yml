@@ -4,7 +4,7 @@
 
 galaxy_info:
   author: Jonas Mauer
-  description: Install the upstream Prometheus server and manage its scrape configuration and systemd service.
+  description: Install Prometheus from distribution packages or an upstream binary release and configure the server.
   galaxy_tags:
     - metrics
     - monitoring

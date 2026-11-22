@@ -9,6 +9,7 @@
       - ansible_facts.architecture in __prometheus_architectures
     fail_msg: A numeric major.minor.patch release and an x86_64 or aarch64 host are required.
     quiet: true
+  when: prometheus_install == 'binary'
 
 - name: PROMETHEUS | Check the HTTP listener for the systemd command line
   ansible.builtin.assert:

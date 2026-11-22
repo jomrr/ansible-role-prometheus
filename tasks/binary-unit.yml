@@ -1,0 +1,28 @@
+---
+# role: prometheus
+# file: tasks/binary-unit.yml
+
+- name: PROMETHEUS | Link the local commands to the selected release
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    src: "{{ __prometheus_libexec_dir }}/{{ __prometheus_program }}-{{ prometheus_version }}"
+    dest: "/usr/local/bin/{{ __prometheus_program }}"
+    state: link
+    follow: false
+  loop: "{{ __prometheus_programs }}"
+  loop_control:
+    loop_var: __prometheus_program
+    label: "{{ __prometheus_program }}"
+  notify: PROMETHEUS | Restart Prometheus
+
+- name: PROMETHEUS | Install the upstream binary service unit
+  become: true
+  become_user: root
+  ansible.builtin.template:
+    src: prometheus.service.j2
+    dest: /etc/systemd/system/prometheus.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: PROMETHEUS | Restart Prometheus

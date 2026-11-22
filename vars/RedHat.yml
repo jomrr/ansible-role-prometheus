@@ -1,0 +1,9 @@
+---
+# role: prometheus
+# file: vars/RedHat.yml
+
+__prometheus_package: prometheus
+__prometheus_env_file: /etc/default/prometheus
+__prometheus_package_data_dir: /var/lib/prometheus/metrics2
+__prometheus_user_home: /var/lib/prometheus
+__prometheus_user_shell: /sbin/nologin

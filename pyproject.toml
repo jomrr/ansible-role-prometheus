@@ -1,7 +1,7 @@
 [project]
 name = "prometheus"
 version = "0.0.0"
-description = "Install the upstream Prometheus server and manage its scrape configuration and systemd service."
+description = "Install Prometheus from distribution packages or an upstream binary release and configure the server."
 requires-python = ">=3.13"
 authors = [
   { name = "Jonas Mauer" },

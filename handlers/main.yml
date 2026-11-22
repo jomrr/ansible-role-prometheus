@@ -7,5 +7,5 @@
   become_user: root
   ansible.builtin.systemd_service:
     name: prometheus.service
-    daemon_reload: "{{ __prometheus_unit.changed }}"
+    daemon_reload: true
     state: restarted

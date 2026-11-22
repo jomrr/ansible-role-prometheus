@@ -6,8 +6,8 @@
 [![dev](https://img.shields.io/github/actions/workflow/status/jomrr/ansible-role-prometheus/dev.yml?branch=dev&label=dev)](https://github.com/jomrr/ansible-role-prometheus/actions/workflows/dev.yml?query=branch%3Adev)
 [![main](https://img.shields.io/github/actions/workflow/status/jomrr/ansible-role-prometheus/main.yml?branch=main&label=main)](https://github.com/jomrr/ansible-role-prometheus/actions/workflows/main.yml?query=branch%3Amain)
 
-Install the upstream Prometheus server and manage its scrape configuration and
-systemd service.
+Install Prometheus from distribution packages or an upstream binary release and
+configure the server.
 
 ## Purpose
 
@@ -17,7 +17,9 @@ Run Prometheus as a standalone time-series database. By default it listens on
 
 ## Requirements
 
-- A systemd host on x86_64 or aarch64 with HTTPS access to Prometheus release
+- Package installs on AlmaLinux use EPEL. The role installs epel-release from
+  AlmaLinux Extras.
+- Binary installs require x86_64 or aarch64 and HTTPS access to upstream release
   assets on GitHub.
 
 ## Dependencies
@@ -34,11 +36,24 @@ collections:
 
 ## Role Variables
 
+### `prometheus_install`
+
+Type: `str`. Required: `false`.
+
+Install the distribution package or a pinned upstream binary release.
+
+Default:
+
+```yaml
+prometheus_install: package
+```
+
 ### `prometheus_version`
 
 Type: `str`. Required: `false`.
 
-Upstream release version in major.minor.patch form.
+Fixed upstream release in major.minor.patch form. Used only when
+prometheus_install is binary.
 
 Default:
 
@@ -81,9 +96,14 @@ prometheus_config:
 ## Managed Files
 
 - `/etc/prometheus/prometheus.yml`
+- `/etc/default/prometheus`
+- `/etc/sysconfig/prometheus`
 - `/etc/systemd/system/prometheus.service`
+- `/usr/local/bin/prometheus`
+- `/usr/local/bin/promtool`
 - `/usr/local/libexec/prometheus/`
-- `/var/lib/prometheus/`
+- `/var/lib/prometheus/metrics2/`
+- `/var/lib/prometheus/metrics/`
 
 ## Check Mode
 
@@ -92,11 +112,12 @@ version upgrades need the matching promtool binary.
 
 ## Service Behavior
 
-The role verifies the archive against the release SHA-256 manifest and checks
-configuration changes with promtool before installing them. It restarts
-Prometheus on changes, preserves the time series in /var/lib/prometheus and
-enables startup at boot. Reapplying the same settings leaves a running service
-undisturbed.
+Package installations use the distribution systemd unit and service account.
+Binary installations verify the release archive against its SHA-256 manifest and
+supply their own unit and service account. Both modes validate the same
+configuration with the selected promtool, use the distribution's environment
+file and data path, and enable the service at boot. Changes to configuration or
+installation mode restart the server.
 
 ## Security Notes
 
@@ -107,6 +128,20 @@ undisturbed.
 
 ## Operational Notes
 
+- openSUSE uses `/etc/sysconfig/prometheus` and `/var/lib/prometheus/metrics`.
+  AlmaLinux, Debian, Fedora and Ubuntu use `/etc/default/prometheus` and
+  `/var/lib/prometheus/metrics2`.
+- Package mode installs the available distribution version and leaves updates to
+  the package manager. To keep an existing upstream installation pinned when
+  adopting this default, set `prometheus_install: binary`.
+- Binary mode stores `prometheus-<version>` and `promtool-<version>` directly in
+  `/usr/local/libexec/prometheus/`. The commands in `/usr/local/bin/` point to
+  the configured release. Changing the pin switches the links and restarts the
+  service. Switching to package mode removes these links so the distribution
+  commands in `/usr/bin/` take effect.
+- Both modes reuse a database created by earlier role versions directly in
+  /var/lib/prometheus. Before selecting an older server version, check
+  configuration and storage compatibility and back up the database.
 - Use absolute paths for external files such as rule files, client certificates
   and bearer tokens. Provision them with read access for the service account.
 - Changing the HTTP listener also requires updating any self-scrape target that
@@ -135,6 +170,20 @@ Query the `up` metric at `http://127.0.0.1:9090` after the first scrape.
   gather_facts: true
   roles:
     - role: jomrr.prometheus
+```
+
+### Pin an upstream binary release
+
+Install a specific upstream release independently of the distribution package version.
+
+```yaml
+- name: Run a pinned Prometheus server
+  hosts: monitoring
+  gather_facts: true
+  roles:
+    - role: jomrr.prometheus
+      prometheus_install: binary
+      prometheus_version: '3.13.5'
 ```
 
 ### Scrape an application

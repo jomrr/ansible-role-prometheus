@@ -1,0 +1,77 @@
+---
+# role: prometheus
+# file: tasks/install-binary.yml
+
+- name: PROMETHEUS | Install the release archive prerequisites
+  become: true
+  become_user: root
+  ansible.builtin.package:
+    name: [ca-certificates, gzip, tar]
+    state: present
+
+- name: PROMETHEUS | Create the service group
+  become: true
+  become_user: root
+  ansible.builtin.group:
+    name: prometheus
+    system: true
+
+- name: PROMETHEUS | Create the service account
+  become: true
+  become_user: root
+  ansible.builtin.user:
+    name: prometheus
+    group: prometheus
+    home: "{{ __prometheus_user_home }}"
+    create_home: false
+    shell: "{{ __prometheus_user_shell }}"
+    system: true
+
+- name: PROMETHEUS | Create the release directory
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "{{ __prometheus_libexec_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: PROMETHEUS | Download and verify the release archive
+  become: true
+  become_user: root
+  ansible.builtin.get_url:
+    url: "{{ __prometheus_download_url }}/{{ __prometheus_release }}.tar.gz"
+    checksum: "sha256:{{ __prometheus_download_url }}/sha256sums.txt"
+    dest: "/var/cache/{{ __prometheus_release }}.tar.gz"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: PROMETHEUS | Install the server and matching validator
+  become: true
+  become_user: root
+  ansible.builtin.unarchive:
+    src: "/var/cache/{{ __prometheus_release }}.tar.gz"
+    remote_src: true
+    dest: "{{ __prometheus_libexec_dir }}"
+    include:
+      - "{{ __prometheus_release }}/prometheus"
+      - "{{ __prometheus_release }}/promtool"
+    extra_opts:
+      - '--transform=s|^.*/||'
+      - '--transform=s|$|-{{ prometheus_version }}|'
+    owner: root
+    group: root
+    mode: '0755'
+  notify: PROMETHEUS | Restart Prometheus
+
+- name: PROMETHEUS | Create the configuration directory
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "{{ __prometheus_config_file | dirname }}"
+    state: directory
+    owner: root
+    group: prometheus
+    mode: '0750'
