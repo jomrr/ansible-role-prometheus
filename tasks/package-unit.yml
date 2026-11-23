@@ -45,12 +45,12 @@
   become: true
   become_user: root
   ansible.builtin.file:
-    path: "/usr/local/bin/{{ __prometheus_link.__prometheus_program }}"
+    path: "/usr/local/bin/{{ __prometheus_local_command.__prometheus_program }}"
     state: absent
   loop: "{{ __prometheus_local_commands.results }}"
   loop_control:
-    loop_var: __prometheus_link
-    label: "{{ __prometheus_link.__prometheus_program }}"
+    loop_var: __prometheus_local_command
+    label: "{{ __prometheus_local_command.__prometheus_program }}"
   when: >-
-    __prometheus_link.stat.lnk_target | default('') is match(
-      __prometheus_libexec_dir ~ '/' ~ __prometheus_link.__prometheus_program ~ '-[0-9]+[.][0-9]+[.][0-9]+\Z')
+    __prometheus_local_command.stat.lnk_target | default('') is match(
+      __prometheus_libexec_dir ~ '/' ~ __prometheus_local_command.__prometheus_program ~ '-[0-9]+[.][0-9]+[.][0-9]+\Z')
