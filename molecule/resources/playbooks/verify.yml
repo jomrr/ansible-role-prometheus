@@ -62,6 +62,7 @@
       become_user: root
       ansible.builtin.mount_facts:
         sources: ["/proc/{{ __prometheus_service.status.MainPID }}/mounts"]
+        include_aggregate_mounts: false
       register: __prometheus_mounts
 
     - name: PROMETHEUS | Check mount permissions inside the running service
