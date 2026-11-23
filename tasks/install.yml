@@ -1,0 +1,30 @@
+---
+# role: prometheus
+# file: tasks/install.yml
+
+- name: PROMETHEUS | Check the installation method and binary release
+  ansible.builtin.assert:
+    that:
+      - prometheus_install in ['package', 'binary']
+      - prometheus_install == 'package' or __prometheus_is_pinned or prometheus_version in ['stable', 'latest', 'lts']
+    quiet: true
+
+- name: PROMETHEUS | Check the binary host architecture
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.architecture in __prometheus_architectures
+    fail_msg: Binary installation requires an x86_64 or aarch64 host.
+    quiet: true
+  when: prometheus_install == 'binary'
+
+- name: PROMETHEUS | Load the distribution package name and paths
+  ansible.builtin.include_vars: "{{ lookup('ansible.builtin.first_found', __prometheus_platform_files) }}"
+  vars:
+    __prometheus_platform_files:
+      files:
+        - "{{ ansible_facts.os_family }}.yml"
+      paths:
+        - "{{ role_path }}/vars"
+
+- name: PROMETHEUS | Install the selected server
+  ansible.builtin.include_tasks: "install-{{ prometheus_install }}.yml"

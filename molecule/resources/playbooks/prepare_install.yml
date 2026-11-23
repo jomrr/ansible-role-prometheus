@@ -1,0 +1,19 @@
+---
+# role: prometheus
+# file: molecule/resources/playbooks/prepare_install.yml
+
+- name: PROMETHEUS | Refresh distribution package metadata
+  ansible.builtin.import_playbook: prepare.yml
+
+- name: PROMETHEUS | Exercise installation before configuring a server
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: PROMETHEUS | Check each standalone installation
+      ansible.builtin.include_tasks: ../tasks/verify_install.yml
+      loop: [binary, package]
+      loop_control:
+        loop_var: __prometheus_test_install
+      vars:
+        prometheus_install: "{{ __prometheus_test_install }}"
+        prometheus_version: '3.13.5'

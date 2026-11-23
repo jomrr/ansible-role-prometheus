@@ -150,8 +150,9 @@ prometheus_config:
 
 ## Check Mode
 
-Run check mode after provisioning the selected release. Initial installation and
-version upgrades need the matching promtool binary.
+The install task supports check mode on a fresh host. For a full role check,
+provision the selected release first so the matching promtool is available to
+validate configuration.
 
 ## Service Behavior
 
@@ -176,6 +177,9 @@ Changes to configuration, retention or installation mode restart the server.
 
 ## Operational Notes
 
+- With `tasks_from: install`, package installations include the vendor's default
+  files. Run the full role to apply the scrape configuration and activate the
+  selected service.
 - openSUSE uses `/etc/sysconfig/prometheus` and `/var/lib/prometheus/metrics`.
   AlmaLinux, Debian, Fedora and Ubuntu use `/etc/default/prometheus` and
   `/var/lib/prometheus/metrics2`.
@@ -183,10 +187,11 @@ Changes to configuration, retention or installation mode restart the server.
   the package manager. To keep an upstream installation pinned, set
   `prometheus_install: binary` and specify its numeric `prometheus_version`.
 - Binary mode stores `prometheus-<version>` and `promtool-<version>` directly in
-  `/usr/local/libexec/prometheus/`. The commands in `/usr/local/bin/` point to
-  the selected release. A version change switches the links and restarts the
-  service. Switching to package mode removes these links so the distribution
-  commands in `/usr/bin/` take effect.
+  `/usr/local/libexec/prometheus/`. The install task points the commands in
+  `/usr/local/bin/` at the selected release. The full role also updates the
+  version used by the systemd unit and restarts the service when that version
+  changes. When switching to package mode, the full role removes the local links
+  so the distribution commands in `/usr/bin/` take effect.
 - Binary installations follow `stable` by default. With `stable`, `latest` or
   `lts`, each run reads the official download catalog. `stable` selects the
   highest stable version, `latest` the release marked latest by Prometheus, and
@@ -228,6 +233,20 @@ Query the `up` metric at `http://127.0.0.1:9090` after the first scrape.
   gather_facts: true
   roles:
     - role: jomrr.prometheus
+```
+
+### Install Prometheus without configuring or starting it
+
+Provision commands and the service account while retaining service state.
+
+```yaml
+- name: Provision Prometheus
+  hosts: monitoring
+  tasks:
+    - name: Install the distribution package
+      ansible.builtin.include_role:
+        name: jomrr.prometheus
+        tasks_from: install
 ```
 
 ### Pin an upstream binary release

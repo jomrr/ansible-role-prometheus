@@ -12,7 +12,7 @@ User=prometheus
 Group=prometheus
 EnvironmentFile={{ __prometheus_env_file }}
 WorkingDirectory={{ __prometheus_data_dir }}
-ExecStart=/usr/local/bin/prometheus $ARGS
+ExecStart={{ __prometheus_libexec_dir }}/prometheus-{{ __prometheus_version }} $ARGS
 Restart=on-failure
 UMask=0027
 

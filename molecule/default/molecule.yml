@@ -25,7 +25,7 @@ provisioner:
         ansible_podman_mount_detection: false
   log: true
   playbooks:
-    prepare: "../resources/playbooks/prepare.yml"
+    prepare: "../resources/playbooks/prepare_install.yml"
     converge: "../resources/playbooks/converge.yml"
     verify: "../resources/playbooks/verify.yml"
     side_effect: "../resources/playbooks/side_effect.yml"

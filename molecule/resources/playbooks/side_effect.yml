@@ -74,6 +74,27 @@
       register: __prometheus_reapplied
       failed_when: __prometheus_reapplied.status.InvocationID != __prometheus_lts_invocation.status.InvocationID
 
+    - name: PROMETHEUS | Stage a pinned binary while the LTS service is running
+      ansible.builtin.include_role:
+        name: "{{ lookup('ansible.builtin.env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+        tasks_from: install
+      vars:
+        prometheus_install: binary
+        prometheus_version: '3.13.5'
+
+    - name: PROMETHEUS | Process notifications from the standalone installation
+      ansible.builtin.meta: flush_handlers
+
+    - name: PROMETHEUS | Verify staging preserves the active service and its boot state
+      ansible.builtin.systemd_service:
+        name: prometheus.service
+        state: started
+      check_mode: true
+      register: __prometheus_staged
+      failed_when: >-
+        __prometheus_staged.status.InvocationID != __prometheus_lts_invocation.status.InvocationID or
+        __prometheus_staged.status.UnitFileState != 'enabled'
+
 - name: PROMETHEUS | Switch the running binary back to the distribution package
   hosts: all
   gather_facts: true

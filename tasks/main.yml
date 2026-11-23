@@ -2,17 +2,13 @@
 # role: prometheus
 # file: tasks/main.yml
 
-- name: PROMETHEUS | Validate installation settings
+- name: PROMETHEUS | Validate server configuration settings
   ansible.builtin.import_tasks: assert.yml
 
-- name: PROMETHEUS | Load the distribution package name and paths
-  ansible.builtin.include_vars: "{{ lookup('ansible.builtin.first_found', __prometheus_platform_files) }}"
+- name: PROMETHEUS | Install Prometheus
+  ansible.builtin.import_tasks: install.yml
   vars:
-    __prometheus_platform_files:
-      files:
-        - "{{ ansible_facts.os_family }}.yml"
-      paths:
-        - "{{ role_path }}/vars"
+    __prometheus_install_notify: [PROMETHEUS | Restart Prometheus]
 
 - name: PROMETHEUS | Locate the database from earlier binary installations
   become: true
@@ -21,8 +17,16 @@
     path: /var/lib/prometheus/wal
   register: __prometheus_legacy_wal
 
-- name: PROMETHEUS | Install the selected server
-  ansible.builtin.include_tasks: "install-{{ prometheus_install }}.yml"
+- name: PROMETHEUS | Create the configuration directory
+  become: true
+  become_user: root
+  ansible.builtin.file:
+    path: "{{ __prometheus_config_file | dirname }}"
+    state: directory
+    owner: root
+    group: prometheus
+    mode: '0750'
+  when: prometheus_install == 'binary'
 
 - name: PROMETHEUS | Set permissions on the active database directory
   become: true

@@ -10,14 +10,56 @@
     state: present
   when: ansible_facts.distribution == 'AlmaLinux'
 
-- name: PROMETHEUS | Install the distribution server package
-  become: true
-  become_user: root
-  ansible.builtin.package:
-    name: "{{ __prometheus_package }}"
-    state: present
-  module_defaults:
-    ansible.builtin.apt:
-      install_recommends: false
-      policy_rc_d: 101
-  notify: PROMETHEUS | Restart Prometheus
+- name: PROMETHEUS | Identify first installation before applying the package preset
+  ansible.builtin.package_facts:
+
+- name: PROMETHEUS | Install the distribution package with service activation suppressed
+  when: __prometheus_package not in ansible_facts.packages
+  block:
+    - name: PROMETHEUS | Create the runtime systemd preset directory
+      become: true
+      become_user: root
+      ansible.builtin.file:
+        path: /run/systemd/system-preset
+        state: directory
+        mode: '0755'
+
+    - name: PROMETHEUS | Reserve a temporary preset for the package transaction
+      become: true
+      become_user: root
+      ansible.builtin.tempfile:
+        path: /run/systemd/system-preset
+        prefix: 00-ansible-prometheus-
+        suffix: .preset
+      register: __prometheus_preset
+
+    - name: PROMETHEUS | Keep the current boot state during package installation
+      become: true
+      become_user: root
+      ansible.builtin.copy:
+        content: "ignore prometheus.service\n"
+        dest: "{{ __prometheus_preset.path }}"
+        mode: '0600'
+      when: __prometheus_preset.path is defined
+
+    - name: PROMETHEUS | Install the distribution server package
+      become: true
+      become_user: root
+      ansible.builtin.package:
+        name: "{{ __prometheus_package }}"
+        state: present
+      module_defaults:
+        ansible.builtin.apt:
+          install_recommends: false
+          policy_rc_d: 101
+      # A check run cannot query the EPEL repository it would first install.
+      when: ansible_facts.distribution != 'AlmaLinux' or 'epel-release' in ansible_facts.packages
+      notify: "{{ __prometheus_install_notify }}"
+  always:
+    - name: PROMETHEUS | Remove the temporary package preset
+      become: true
+      become_user: root
+      ansible.builtin.file:
+        path: "{{ __prometheus_preset.path }}"
+        state: absent
+      when: __prometheus_preset.path is defined

@@ -1,0 +1,59 @@
+---
+# role: prometheus
+# file: molecule/resources/tasks/verify_install.yml
+
+- name: PROMETHEUS | Preview installation on an unprovisioned host
+  ansible.builtin.import_role:
+    name: "{{ lookup('ansible.builtin.env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+    tasks_from: install
+  check_mode: true
+
+- name: PROMETHEUS | Verify the preview did not install the server
+  ansible.builtin.stat:
+    path: "{{ '/usr/local/bin/prometheus' if prometheus_install == 'binary' else '/usr/bin/prometheus' }}"
+  register: __prometheus_preview
+  failed_when: __prometheus_preview.stat.exists
+
+- name: PROMETHEUS | Install commands and service account
+  ansible.builtin.import_role:
+    name: "{{ lookup('ansible.builtin.env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+    tasks_from: install
+
+- name: PROMETHEUS | Process pending handlers before inspecting the service
+  ansible.builtin.meta: flush_handlers
+
+- name: PROMETHEUS | Check the installed server command
+  ansible.builtin.command:
+    argv:
+      - "{{ '/usr/local/bin/prometheus' if prometheus_install == 'binary' else '/usr/bin/prometheus' }}"
+      - --version
+  changed_when: false
+
+- name: PROMETHEUS | Check the service account
+  ansible.builtin.getent:
+    database: passwd
+    key: prometheus
+
+- name: PROMETHEUS | Read the service state after installation
+  ansible.builtin.service_facts:
+
+- name: PROMETHEUS | Verify installation leaves the service inactive and disabled
+  ansible.builtin.assert:
+    that:
+      - __prometheus_test_unit.get('state') != 'running'
+      - __prometheus_test_unit.get('status') != 'enabled'
+    quiet: true
+  vars:
+    __prometheus_test_unit: "{{ ansible_facts.services.get('prometheus.service', {}) }}"
+
+- name: PROMETHEUS | Verify role-managed configuration and units are absent
+  ansible.builtin.stat:
+    path: "{{ __prometheus_test_path }}"
+  loop:
+    - /etc/systemd/system/prometheus.service
+    - /etc/systemd/system/prometheus.service.d/10-ansible.conf
+    - "{{ '/etc/prometheus' if prometheus_install == 'binary' else '/etc/prometheus/web-config.ansible.yml' }}"
+  loop_control:
+    loop_var: __prometheus_test_path
+  register: __prometheus_unconfigured
+  failed_when: __prometheus_unconfigured.stat.exists

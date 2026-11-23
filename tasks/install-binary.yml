@@ -51,6 +51,7 @@
     owner: root
     group: root
     mode: '0755'
+  register: __prometheus_release_dir
 
 - name: PROMETHEUS | Download and verify the release archive
   become: true
@@ -62,6 +63,7 @@
     owner: root
     group: root
     mode: '0644'
+  register: __prometheus_archive
 
 - name: PROMETHEUS | Install the server and matching validator
   become: true
@@ -79,14 +81,22 @@
     owner: root
     group: root
     mode: '0755'
-  notify: PROMETHEUS | Restart Prometheus
+  # A dry run may only have predicted the directory or archive.
+  when: __prometheus_release_dir.state is defined and __prometheus_archive.state is defined
+  register: __prometheus_extract
+  notify: "{{ __prometheus_install_notify }}"
 
-- name: PROMETHEUS | Create the configuration directory
+- name: PROMETHEUS | Link the local commands to the selected release
   become: true
   become_user: root
   ansible.builtin.file:
-    path: "{{ __prometheus_config_file | dirname }}"
-    state: directory
-    owner: root
-    group: prometheus
-    mode: '0750'
+    src: "{{ __prometheus_libexec_dir }}/{{ __prometheus_program }}-{{ __prometheus_version }}"
+    dest: "/usr/local/bin/{{ __prometheus_program }}"
+    state: link
+    follow: false
+    force: "{{ __prometheus_extract is skipped }}"
+  loop: "{{ __prometheus_programs }}"
+  loop_control:
+    loop_var: __prometheus_program
+    label: "{{ __prometheus_program }}"
+  notify: "{{ __prometheus_install_notify }}"
